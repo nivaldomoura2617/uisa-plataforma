@@ -1,0 +1,296 @@
+// ============================================================
+// UISA — Plataforma de Aplicativos Internos
+// Prisma Schema v2.2 (SQLite Version)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "sqlite"
+  url       = env("DATABASE_URL")
+}
+
+// ── AUTH (NextAuth) ───────────────────────────────────────────
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  name          String?
+  image         String?
+  globalRole    String      @default("USER") // formerly enum GlobalRole
+  isActive      Boolean     @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  lastLoginAt   DateTime?
+
+  accounts       Account[]
+  sessions       Session[]
+  appPermissions AppPermission[]
+  projects       Project[]        @relation("ProjectOwner")
+  auditLogs      AuditLog[]
+  invitations    Invitation[]     @relation("InvitedBy")
+  aiUsageLogs    AiUsageLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  ipAddress    String?
+  userAgent    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  email       String
+  globalRole  String    @default("USER") // formerly enum GlobalRole
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Permissões iniciais que serão criadas quando aceitar o convite
+  initialPermissions String? // [{ appSlug, appRole }]
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@map("invitations")
+}
+
+// ── PORTAL — CATÁLOGO DE APLICATIVOS ─────────────────────────
+
+model App {
+  id          String   @id @default(cuid())
+  slug        String   @unique  // ex: "viabilidade-economica"
+  nome        String
+  descricao   String?
+  icone       String   @default("layout-grid")  // nome do ícone Lucide
+  urlBase     String   // ex: "/viabilidade"
+  ativo       Boolean  @default(true)
+  ordem       Int      @default(0)
+  rolesDisponiveis String @default("[]") // formerly AppRole[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions AppPermission[]
+
+  @@map("apps")
+}
+
+// ── PERMISSÕES POR APP ────────────────────────────────────────
+// Nível 1 (acesso ao app) + Nível 2 (perfil dentro do app)
+// Um registro = um usuário com um perfil em um app específico
+
+model AppPermission {
+  id         String   @id @default(cuid())
+  userId     String
+  appId      String
+  appRole    String   // formerly enum AppRole
+  grantedBy  String?
+  grantedAt  DateTime @default(now())
+  expiresAt  DateTime?
+  isActive   Boolean  @default(true)
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  app   App  @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, appId])  // Um perfil por usuário por app
+  @@map("app_permissions")
+}
+
+// ── AUDIT ─────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  userId       String
+  action       String      // formerly enum AuditAction
+  appSlug      String?     // qual app foi afetado (null = ação no portal)
+  resourceType String?     // "project" | "user" | "permission" | "premises"
+  resourceId   String?
+  payloadJson  String?       // { before, after } diff
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model AccessLog {
+  id         String   @id @default(cuid())
+  email      String
+  appSlug    String?
+  result     String   // "success" | "denied" | "blocked"
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("access_logs")
+}
+
+// ── VIABILIDADE — PROJETOS ────────────────────────────────────
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  department  String?
+  responsible String?
+  ownerId     String
+  status      String        @default("DRAFT") // formerly enum ProjectStatus
+  isDemo      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?     // soft delete
+
+  owner    User             @relation("ProjectOwner", fields: [ownerId], references: [id])
+  versions ProjectVersion[]
+  analyses QualitativeAnalysis[]
+
+  @@map("projects")
+}
+
+model ProjectVersion {
+  id        String   @id @default(cuid())
+  projectId String
+  version   Int
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  // Parâmetros financeiros
+  tma          Float   @default(14.7)
+  ir           Float   @default(15.3)
+  pisCofins    Float   @default(9.15)
+  vidaUtil     Int     @default(10)
+  anoIRPJ      Int     @default(2034)
+  aplicarIRPJ  Boolean @default(false)
+  engineVersion Int    @default(6)
+
+  // CAPEX
+  capex        Float
+  dataInvest   String  // ISO date YYYY-MM-DD
+  creditoPis   Boolean @default(false)
+  manutencao   Float   @default(0)
+  vidaFiscal   Int     @default(5)
+
+  // Ramp-up
+  rampupTipo   String     @default("integral") // formerly enum RampupType
+  rampupAnos   Int        @default(5)
+  rampupCustom String     @default("[]")       // formerly Float[]
+
+  // Inputs como JSONB
+  produtos String  // ProductInput[]
+  opex     String  // OpexInput[] — formato unificado v6
+  rh       String  // RHInput[]
+
+  // Resultado calculado
+  results String?  // CalculationResults | null
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analyses QualitativeAnalysis[]
+
+  @@unique([projectId, version])
+  @@map("project_versions")
+}
+
+// ── ANÁLISE QUALITATIVA ───────────────────────────────────────
+
+model QualitativeAnalysis {
+  id            String         @id @default(cuid())
+  projectId     String
+  versionId     String?
+  engine        String         @default("descriptive") // formerly enum AnalysisEngine
+  modelUsed     String?
+  contentJson   String
+  tokensInput   Int?
+  tokensOutput  Int?
+  generatedAt   DateTime       @default(now())
+  generatedById String?
+
+  project   Project         @relation(fields: [projectId], references: [id])
+  version   ProjectVersion? @relation(fields: [versionId], references: [id])
+
+  @@map("qualitative_analyses")
+}
+
+model AiUsageLog {
+  id           String   @id @default(cuid())
+  userId       String
+  projectId    String?
+  model        String
+  tokensInput  Int
+  tokensOutput Int
+  costUsd      Float
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("ai_usage_logs")
+}
+
+// ── PREMISSAS CENTRALIZADAS ───────────────────────────────────
+
+model ProductConfig {
+  id        String   @id @default(cuid())
+  nome      String   @unique
+  preco     Float
+  margem    Float
+  unidade   String
+  ativo     Boolean  @default(true)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("products_config")
+}
+
+model PremissaConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Float
+  unit      String?
+  descricao String?
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("premissas_config")
+}

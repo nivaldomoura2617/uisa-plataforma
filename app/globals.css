@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── UISA Design System ─────────────────────────────────────── */
+@layer base {
+
+  /* ── Light Mode ── */
+  :root {
+    --bg-base:        #F0F2F5;
+    --bg-surface:     #FFFFFF;
+    --bg-sidebar:     #FFFFFF;
+    --bg-card:        #FFFFFF;
+    --bg-hover:       #F5F5F5;
+    --border:         #E5E7EB;
+    --border-strong:  #D1D5DB;
+    --text-primary:   #1A1A1A;
+    --text-secondary: #4A4A4A;
+    --text-muted:     #9E9E9E;
+    --text-inverse:   #FFFFFF;
+    --logo-inner:     #FFFFFF;
+
+    /* UISA Brand */
+    --uisa-orange:    #F07022;
+    --uisa-yellow:    #F5C400;
+    --uisa-green:     #007960;
+    --uisa-red:       #C0392B;
+    --uisa-gray-dark: #4A4A4A;
+    --uisa-gray:      #9E9E9E;
+
+    /* Shadows */
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.10);
+    --shadow-lg:  0 8px 24px rgba(0,0,0,0.12);
+  }
+
+  /* ── Dark Mode ── */
+  .dark {
+    --bg-base:        #0F1117;
+    --bg-surface:     #1A1D27;
+    --bg-sidebar:     #13161F;
+    --bg-card:        #1E2130;
+    --bg-hover:       #252839;
+    --border:         #2A2D3A;
+    --border-strong:  #363A4E;
+    --text-primary:   #F0F0F5;
+    --text-secondary: #B0B3C1;
+    --text-muted:     #6B7280;
+    --text-inverse:   #0F1117;
+    --logo-inner:     #0F1117;
+
+    /* Brand stays the same in dark */
+    --uisa-orange:    #F07022;
+    --uisa-yellow:    #F5C400;
+    --uisa-green:     #007960;
+    --uisa-red:       #C0392B;
+    --uisa-gray-dark: #9E9E9E;
+    --uisa-gray:      #6B7280;
+
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.30);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.40);
+    --shadow-lg:  0 8px 24px rgba(0,0,0,0.50);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+  }
+}
+
+@layer components {
+  /* ── Inputs ── */
+  .field-label {
+    @apply block text-[10px] font-bold uppercase tracking-wider mb-1.5;
+    color: var(--text-muted);
+  }
+  .field-input {
+    @apply w-full rounded-lg px-3 py-2.5 text-sm transition-colors;
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .field-input::placeholder {
+    color: var(--text-muted);
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--uisa-orange);
+    box-shadow: 0 0 0 2px rgba(240, 112, 34, 0.15);
+  }
+
+  /* ── Cards ── */
+  .uisa-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s;
+  }
+  .uisa-card:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ── Buttons ── */
+  .btn-primary {
+    @apply flex items-center gap-2 font-semibold px-5 py-2.5 rounded-lg text-sm transition-all;
+    background-color: var(--uisa-orange);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background-color: #d45f18;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(240,112,34,0.35);
+  }
+  .btn-secondary {
+    @apply flex items-center gap-2 font-semibold px-5 py-2.5 rounded-lg text-sm transition-all;
+    background-color: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background-color: var(--bg-surface);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+  }
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all;
+    color: var(--text-secondary);
+  }
+  .sidebar-link:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .sidebar-link.active {
+    background-color: rgba(240, 112, 34, 0.12);
+    color: var(--uisa-orange);
+    font-weight: 600;
+  }
+
+  /* ── Stats card ── */
+  .stat-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(240,112,34,0.2) transparent;
+  }
+
+  .text-primary   { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-muted     { color: var(--text-muted); }
+  .bg-surface     { background-color: var(--bg-surface); }
+  .bg-card        { background-color: var(--bg-card); }
+  .border-theme   { border-color: var(--border); }
+}
