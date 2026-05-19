@@ -4,8 +4,41 @@ import { redirect, notFound } from 'next/navigation'
 import { getUserAppPermission, canDoAction } from '@/lib/permissions'
 import { db } from '@/lib/db'
 import { WizardClient } from '@/components/viabilidade/wizard/WizardClient'
+import { IS_DEMO, DEMO_PREMISSAS, DEMO_PRODUTOS, getDemoProjectById } from '@/lib/demo-data'
 
 export default async function EditProjectPage({ params }: { params: { id: string } }) {
+  if (IS_DEMO) {
+    const project = getDemoProjectById(params.id)
+    if (!project) notFound()
+
+    const version = project.versions[0]
+
+    const initialInputs = {
+      nome: project.name, resp: project.responsible ?? '', depto: project.department ?? '',
+      tma: version.tma, ir: version.ir, pisCofins: version.pisCofins,
+      vidaUtil: version.vidaUtil, anoIRPJ: version.anoIRPJ, aplicarIRPJ: version.aplicarIRPJ,
+      capex: version.capex, dataInvest: version.dataInvest,
+      creditoPis: version.creditoPis, manutencao: version.manutencao, vidaFiscal: version.vidaFiscal,
+      rampupTipo: version.rampupTipo as any, rampupAnos: version.rampupAnos, rampupCustom: version.rampupCustom,
+      produtos: version.produtos, opex: version.opex, rh: version.rh,
+    }
+
+    return (
+      <WizardClient
+        isModerador={true}
+        canCalculate={true}
+        premissas={{
+          tma:     DEMO_PREMISSAS.TMA_PADRAO,
+          ir:      DEMO_PREMISSAS.IRPJ_CSLL,
+          anoIRPJ: DEMO_PREMISSAS.ANO_IRPJ,
+        }}
+        produtos={DEMO_PRODUTOS as any}
+        initialInputs={initialInputs}
+        projectId={params.id}
+      />
+    )
+  }
+
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
@@ -29,14 +62,12 @@ export default async function EditProjectPage({ params }: { params: { id: string
   const isModerador  = ['MODERADOR','ADMIN_APP'].includes(perm.appRole)
   const canCalculate  = canDoAction(perm.appRole, 'CALCULATE_PROJECT')
 
-  // Helper para lidar com json quebrado
   const safeParse = (str: any, fallback: any = []) => {
-    if (!str) return fallback;
-    try { return typeof str === 'string' ? JSON.parse(str) : str; }
-    catch { return fallback; }
-  };
+    if (!str) return fallback
+    try { return typeof str === 'string' ? JSON.parse(str) : str }
+    catch { return fallback }
+  }
 
-  // Reconstruir inputs do banco
   const initialInputs = {
     nome: project.name, resp: project.responsible ?? '', depto: project.department ?? '',
     tma: version.tma, ir: version.ir, pisCofins: version.pisCofins,
@@ -47,7 +78,6 @@ export default async function EditProjectPage({ params }: { params: { id: string
     produtos: safeParse(version.produtos, []), opex: safeParse(version.opex, []), rh: safeParse(version.rh, []),
   }
 
-  // Carregar premissas e produtos
   const [premissas, produtos] = await Promise.all([
     db.premissaConfig.findMany(),
     db.productConfig.findMany({ where: { ativo: true }, orderBy: { nome: 'asc' } }),
