@@ -7,3 +7,4 @@
   NEXTAUTH_SECRET  = "uisa-demo-secret-netlify-2025"
   DATABASE_URL     = "file:./prisma/dev.db"
   NODE_VERSION     = "20"
+  NPM_FLAGS        = "--legacy-peer-deps"
