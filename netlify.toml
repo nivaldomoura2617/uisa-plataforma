@@ -5,6 +5,7 @@
 [build.environment]
   DEMO_MODE        = "true"
   NEXTAUTH_SECRET  = "uisa-demo-secret-netlify-2025"
+  NEXTAUTH_URL     = "https://gleeful-paletas-ec133b.netlify.app"
   DATABASE_URL     = "file:./prisma/dev.db"
   NODE_VERSION     = "20"
   NPM_FLAGS        = "--legacy-peer-deps"
