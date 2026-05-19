@@ -6,35 +6,48 @@ import { db } from '@/lib/db'
 import { ProjectCard } from '@/components/viabilidade/ProjectCard'
 import Link from 'next/link'
 import { Plus, TrendingUp, AlertTriangle, DollarSign, FileText } from 'lucide-react'
+import { IS_DEMO, DEMO_USER, getDemoProjects } from '@/lib/demo-data'
 
 const APP_SLUG = 'viabilidade-economica'
 
 export default async function ViabilidadePage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
+  let projects: any[]
+  let canCreate: boolean
+  let canSeeAll: boolean
+  let userId: string
 
-  const userId = (session.user as any).id as string
-  const perm   = await getUserAppPermission(userId, APP_SLUG)
-  if (!perm) redirect('/')
+  if (IS_DEMO) {
+    projects  = getDemoProjects()
+    canCreate = false   // demo é read-only
+    canSeeAll = true
+    userId    = DEMO_USER.id
+  } else {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) redirect('/login')
 
-  const canCreate  = canDoAction(perm.appRole, 'CREATE_PROJECT')
-  const canSeeAll  = canDoAction(perm.appRole, 'VIEW_ALL_PROJECTS')
+    userId        = (session.user as any).id as string
+    const perm    = await getUserAppPermission(userId, APP_SLUG)
+    if (!perm) redirect('/')
 
-  const projects = await db.project.findMany({
-    where: {
-      deletedAt: null,
-      ...(canSeeAll ? {} : { ownerId: userId }),
-    },
-    include: {
-      versions: {
-        orderBy: { version: 'desc' },
-        take: 1,
-        select: { id: true, version: true, capex: true, tma: true, results: true, createdAt: true },
+    canCreate = canDoAction(perm.appRole, 'CREATE_PROJECT')
+    canSeeAll = canDoAction(perm.appRole, 'VIEW_ALL_PROJECTS')
+
+    projects = await db.project.findMany({
+      where: {
+        deletedAt: null,
+        ...(canSeeAll ? {} : { ownerId: userId }),
       },
-      owner: { select: { name: true, email: true } },
-    },
-    orderBy: { updatedAt: 'desc' },
-  })
+      include: {
+        versions: {
+          orderBy: { version: 'desc' },
+          take: 1,
+          select: { id: true, version: true, capex: true, tma: true, results: true, createdAt: true },
+        },
+        owner: { select: { name: true, email: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    })
+  }
 
   // Stats
   const calculated = projects.filter(p => p.status === 'CALCULATED')
@@ -45,12 +58,19 @@ export default async function ViabilidadePage() {
   })
   const totalCapex = projects.reduce((s, p) => s + (p.versions[0]?.capex ?? 0), 0)
 
+  // No demo, results já estão como objeto (não string)
+  const viavelsDirect = IS_DEMO
+    ? calculated.filter(p => (p.versions[0]?.results as any)?.vpl > 0)
+    : viaveis
+
   const stats = [
-    { label: 'Total de Estudos',    value: projects.length,                      icon: FileText,      color: 'var(--text-primary)' },
-    { label: 'Projetos Viáveis',    value: viaveis.length,                       icon: TrendingUp,    color: 'var(--uisa-green)' },
-    { label: 'Projetos Inviáveis',  value: calculated.length - viaveis.length,   icon: AlertTriangle, color: 'var(--uisa-red)' },
-    { label: 'CAPEX Total (R$ mi)', value: (totalCapex/1e6).toFixed(1),          icon: DollarSign,    color: '#60A5FA' },
+    { label: 'Total de Estudos',    value: projects.length,                                icon: FileText,      color: 'var(--text-primary)' },
+    { label: 'Projetos Viáveis',    value: IS_DEMO ? viavelsDirect.length : viaveis.length, icon: TrendingUp,    color: 'var(--uisa-green)' },
+    { label: 'Projetos Inviáveis',  value: calculated.length - (IS_DEMO ? viavelsDirect.length : viaveis.length), icon: AlertTriangle, color: 'var(--uisa-red)' },
+    { label: 'CAPEX Total (R$ mi)', value: (totalCapex/1e6).toFixed(1),                    icon: DollarSign,    color: '#60A5FA' },
   ]
+
+  const appRole = IS_DEMO ? 'ADMIN_APP' : 'ANALISTA'
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -107,7 +127,7 @@ export default async function ViabilidadePage() {
       ) : (
         <div className="space-y-3">
           {projects.map(p => (
-            <ProjectCard key={p.id} project={p} appRole={perm.appRole} userId={userId} />
+            <ProjectCard key={p.id} project={p} appRole={appRole as any} userId={userId} />
           ))}
         </div>
       )}

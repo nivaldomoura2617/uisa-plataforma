@@ -2,6 +2,9 @@ import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// ── DEMO_MODE: bypass completo de autenticação ────────────────
+const IS_DEMO = process.env.DEMO_MODE === 'true'
+
 // Rotas públicas (sem autenticação)
 const PUBLIC_PATHS = ['/login', '/api/auth']
 
@@ -11,7 +14,12 @@ const APP_ROUTE_MAP: Record<string, string> = {
   // Adicionar novos apps aqui conforme desenvolvidos
 }
 
-export default withAuth(
+// ── DEMO_MODE: middleware passthrough sem autenticação ────────
+async function demoMiddleware(_req: NextRequest) {
+  return NextResponse.next()
+}
+
+const prodMiddleware = withAuth(
   async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl
     const token = (req as any).nextauth?.token
@@ -38,9 +46,6 @@ export default withAuth(
       return NextResponse.next()
     }
 
-    // Apps: verificar acesso via app_permissions
-    // A verificação detalhada fica no layout de cada app (Server Component)
-    // O middleware apenas garante que o usuário está autenticado
     return NextResponse.next()
   },
   {
@@ -55,6 +60,8 @@ export default withAuth(
     },
   }
 )
+
+export default IS_DEMO ? demoMiddleware : prodMiddleware
 
 export const config = {
   matcher: [

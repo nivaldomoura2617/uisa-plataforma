@@ -4,10 +4,29 @@ import { redirect } from 'next/navigation'
 import { getUserAppPermission } from '@/lib/permissions'
 import { db } from '@/lib/db'
 import { ViabilidadeSidebar } from '@/components/viabilidade/ViabilidadeSidebar'
+import { DemoBanner } from '@/components/DemoBanner'
+import { IS_DEMO, DEMO_SESSION } from '@/lib/demo-data'
 
 const APP_SLUG = 'viabilidade-economica'
 
 export default async function ViabilidadeLayout({ children }: { children: React.ReactNode }) {
+  if (IS_DEMO) {
+    return (
+      <div style={{ paddingTop: '34px' }}>
+        <DemoBanner />
+        <div className="flex min-h-screen" style={{ background: 'var(--bg-base)' }}>
+          <ViabilidadeSidebar
+            user={DEMO_SESSION.user as any}
+            appRole="ADMIN_APP"
+          />
+          <main className="flex-1 overflow-x-hidden" style={{ background: 'var(--bg-base)' }}>
+            {children}
+          </main>
+        </div>
+      </div>
+    )
+  }
+
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 

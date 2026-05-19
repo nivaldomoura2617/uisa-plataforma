@@ -4,19 +4,27 @@ import { redirect } from 'next/navigation'
 import { getAppsWithStatus } from '@/lib/permissions'
 import { db } from '@/lib/db'
 import { AppGrid } from '@/components/portal/AppGrid'
+import { IS_DEMO, DEMO_SESSION, DEMO_APPS, DEMO_USER } from '@/lib/demo-data'
 
 export default async function PortalPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
+  let apps: any[]
+  let firstName: string
 
-  const userId = (session.user as any).id as string
+  if (IS_DEMO) {
+    apps      = DEMO_APPS
+    firstName = DEMO_USER.name.split(' ')[0]
+  } else {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) redirect('/login')
 
-  const [apps, user] = await Promise.all([
-    getAppsWithStatus(userId),
-    db.user.findUnique({ where: { id: userId }, select: { name: true, globalRole: true } }),
-  ])
-
-  const firstName = user?.name?.split(' ')[0] ?? session.user.email?.split('@')[0]
+    const userId = (session.user as any).id as string
+    const [appsData, user] = await Promise.all([
+      getAppsWithStatus(userId),
+      db.user.findUnique({ where: { id: userId }, select: { name: true, globalRole: true } }),
+    ])
+    apps      = appsData
+    firstName = user?.name?.split(' ')[0] ?? session.user.email?.split('@')[0] ?? 'Usuário'
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

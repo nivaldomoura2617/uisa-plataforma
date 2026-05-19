@@ -1,0 +1,10 @@
+[build]
+  command   = "npm run build"
+  publish   = ".next"
+
+[build.environment]
+  DEMO_MODE       = "true"
+  NEXTAUTH_SECRET = "uisa-demo-secret-change-in-production"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

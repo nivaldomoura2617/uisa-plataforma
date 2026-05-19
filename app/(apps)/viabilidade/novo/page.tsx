@@ -4,8 +4,25 @@ import { redirect } from 'next/navigation'
 import { getUserAppPermission, canDoAction } from '@/lib/permissions'
 import { db } from '@/lib/db'
 import { WizardClient } from '@/components/viabilidade/wizard/WizardClient'
+import { IS_DEMO, DEMO_PREMISSAS, DEMO_PRODUTOS } from '@/lib/demo-data'
 
 export default async function NovoProjetoPage() {
+  if (IS_DEMO) {
+    // Em modo demo o wizard fica visível mas não salva nada
+    return (
+      <WizardClient
+        isModerador={true}
+        canCalculate={true}
+        premissas={{
+          tma:     DEMO_PREMISSAS.TMA_PADRAO,
+          ir:      DEMO_PREMISSAS.IRPJ_CSLL,
+          anoIRPJ: DEMO_PREMISSAS.ANO_IRPJ,
+        }}
+        produtos={DEMO_PRODUTOS as any}
+      />
+    )
+  }
+
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
 
